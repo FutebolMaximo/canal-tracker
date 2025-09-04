@@ -411,6 +411,8 @@
     }
 
     async function resolveChannelId(url){
+      // Agora com fallback por busca, mesmo que forHandle falhe
+    
       // Cache local simples por URL
       const cacheKey = 'fm_channel_cache_v1';
       const cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
@@ -424,6 +426,15 @@
 
         // /user/username
         if (!channelId) {
+          // Fallback search (busca pelo canal se nada encontrado ainda)
+          try {
+            const searchResp = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(url)}&maxResults=1&key=${YT_API_KEY}`);
+            const searchData = await searchResp.json();
+            if (searchData.items && searchData.items.length) {
+              channelId = searchData.items[0].id.channelId;
+            }
+          } catch(e){console.error('fallback search error', e);}
+    
           const userMatch = url.match(/\/user\/([^/?#]+)/);
           if (userMatch) {
             const username = userMatch[1];
@@ -435,6 +446,15 @@
 
         // @handle (novo) via forHandle
         if (!channelId) {
+          // Fallback search (busca pelo canal se nada encontrado ainda)
+          try {
+            const searchResp = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(url)}&maxResults=1&key=${YT_API_KEY}`);
+            const searchData = await searchResp.json();
+            if (searchData.items && searchData.items.length) {
+              channelId = searchData.items[0].id.channelId;
+            }
+          } catch(e){console.error('fallback search error', e);}
+    
           const handleMatch = url.match(/@([A-Za-z0-9._-]+)/);
           if (handleMatch) {
             const handle = handleMatch[1];
@@ -454,6 +474,15 @@
 
         // fallback: tentar extrair ID UC... no texto
         if (!channelId) {
+          // Fallback search (busca pelo canal se nada encontrado ainda)
+          try {
+            const searchResp = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(url)}&maxResults=1&key=${YT_API_KEY}`);
+            const searchData = await searchResp.json();
+            if (searchData.items && searchData.items.length) {
+              channelId = searchData.items[0].id.channelId;
+            }
+          } catch(e){console.error('fallback search error', e);}
+    
           const uc = url.match(/(UC[0-9A-Za-z_-]{22})/);
           if (uc) channelId = uc[1];
         }
