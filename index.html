@@ -149,7 +149,7 @@
   <div class="modal" id="addChannelModal">
     <div class="modal-content">
       <h2>Adicionar Canal</h2>
-      <input type="text" id="channelUrl" placeholder="URL do canal do YouTube (ex: @username)">
+      <input type="text" id="channelUrl" placeholder="URL do canal do YouTube (ex: https://www.youtube.com/@username)">
       <button class="btn" onclick="trackChannel()">Trackear Canal</button>
     </div>
   </div>
@@ -214,23 +214,23 @@
       if (channelUrl.trim()) {
         const listIndex = document.getElementById('channelUrl').dataset.listIndex;
         
-        let channelId;
-        if (channelUrl.includes('@')) {
-          const username = channelUrl.split('@')[1];
-          // Buscar o channelId a partir do username
-          getChannelId(username).then(id => {
-            channelId = id;
-            fetchVideos(channelId).then(videos => {
-              savedLists[listIndex].channels.push({ username, videos });
-              closeAddChannelModal();
-              displayVideos(savedLists[listIndex].channels);
-            }).catch(error => {
-              console.error("Erro ao buscar vídeos:", error);
-            });
+        // Extrair o @username da URL completa
+        const username = channelUrl.split('@')[1];
+
+        // Chamar a API para obter o channelId usando o @username
+        getChannelId(username).then(channelId => {
+          console.log("Tracking Channel:", channelId);
+
+          fetchVideos(channelId).then(videos => {
+            savedLists[listIndex].channels.push({ username, videos });
+            closeAddChannelModal();
+            displayVideos(savedLists[listIndex].channels);
           }).catch(error => {
-            console.error("Erro ao buscar o channelId:", error);
+            console.error("Erro ao buscar vídeos:", error);
           });
-        }
+        }).catch(error => {
+          console.error("Erro ao buscar o channelId:", error);
+        });
       }
     }
 
