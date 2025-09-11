@@ -216,9 +216,12 @@
         const listIndex = document.getElementById('channelUrl').dataset.listIndex;
         const username = channelUrl.split('@')[1];
 
-        console.log("Tracking Channel:", username);
+        // Garantir que estamos passando o channelId correto
+        const channelId = `UC${username}`;
 
-        fetchVideos(username).then(videos => {
+        console.log("Tracking Channel:", channelId);
+
+        fetchVideos(channelId).then(videos => {
           savedLists[listIndex].channels.push({ username, videos });
           closeAddChannelModal();
           displayVideos(savedLists[listIndex].channels);
@@ -228,9 +231,8 @@
       }
     }
 
-    function fetchVideos(username) {
+    function fetchVideos(channelId) {
       const apiKey = "AIzaSyD2737mJtrmC5efJz4gntSAxochOoq8LpE";
-      const channelId = `UC${username}`;
       const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=10`;
 
       console.log("Fetching data from:", apiUrl);
@@ -238,8 +240,7 @@
       return fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          // Exibir a resposta completa da API no console para diagnóstico
-          console.log("API response:", data); // Aqui verificamos a estrutura completa da resposta
+          console.log("API response:", data);
 
           // Verificar se os dados têm a propriedade 'items' e manipular corretamente
           if (data.items && Array.isArray(data.items)) {
@@ -248,7 +249,6 @@
               thumbnail: item.snippet.thumbnails.high.url
             }));
           } else {
-            // Caso a resposta não tenha 'items', exibe o erro
             console.error("Nenhum item encontrado na resposta", data);
             return [];
           }
