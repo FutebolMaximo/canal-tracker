@@ -213,22 +213,24 @@
       const channelUrl = document.getElementById('channelUrl').value;
       if (channelUrl.trim()) {
         const listIndex = document.getElementById('channelUrl').dataset.listIndex;
-        const username = channelUrl.split('@')[1];
-
-        // Chamar a API para obter o channelId usando o @username
-        getChannelId(username).then(channelId => {
-          console.log("Tracking Channel:", channelId);
-
-          fetchVideos(channelId).then(videos => {
-            savedLists[listIndex].channels.push({ username, videos });
-            closeAddChannelModal();
-            displayVideos(savedLists[listIndex].channels);
+        
+        let channelId;
+        if (channelUrl.includes('@')) {
+          const username = channelUrl.split('@')[1];
+          // Buscar o channelId a partir do username
+          getChannelId(username).then(id => {
+            channelId = id;
+            fetchVideos(channelId).then(videos => {
+              savedLists[listIndex].channels.push({ username, videos });
+              closeAddChannelModal();
+              displayVideos(savedLists[listIndex].channels);
+            }).catch(error => {
+              console.error("Erro ao buscar vídeos:", error);
+            });
           }).catch(error => {
-            console.error("Erro ao buscar vídeos:", error);
+            console.error("Erro ao buscar o channelId:", error);
           });
-        }).catch(error => {
-          console.error("Erro ao buscar o channelId:", error);
-        });
+        }
       }
     }
 
