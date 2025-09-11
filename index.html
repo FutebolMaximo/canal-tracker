@@ -215,14 +215,12 @@
         const listIndex = document.getElementById('channelUrl').dataset.listIndex;
         const username = channelUrl.split('@')[1];
 
-        // Log username to debug
         console.log("Tracking Channel:", username);
 
-        // Call YouTube API here to fetch videos by username
         fetchVideos(username).then(videos => {
           savedLists[listIndex].channels.push({ username, videos });
           closeAddChannelModal();
-          displayVideos(savedLists[listIndex].channels); // Display videos of this list
+          displayVideos(savedLists[listIndex].channels);
         }).catch(error => {
           console.error("Erro ao buscar vídeos:", error);
         });
@@ -234,7 +232,6 @@
       const channelId = `UC${username}`;
       const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=10`;
 
-      // Log API URL for debugging
       console.log("Fetching data from:", apiUrl);
 
       return fetch(apiUrl)
@@ -245,8 +242,10 @@
               title: item.snippet.title,
               thumbnail: item.snippet.thumbnails.high.url
             }));
+          } else {
+            console.error("No items found in the response", data);
+            return [];
           }
-          return [];
         })
         .catch(error => {
           console.error("Erro ao buscar vídeos:", error);
