@@ -100,6 +100,24 @@
       border-radius: 5px;
       border: none;
     }
+
+    /* Thumbnail and video display */
+    .video-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .video-item {
+      background-color: #222;
+      width: 200px;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .video-item img {
+      width: 100%;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -119,7 +137,7 @@
     <div class="list-container" id="listContainer"></div>
   </div>
 
-  <!-- Modal -->
+  <!-- Modal Criar Lista -->
   <div class="modal" id="modal">
     <div class="modal-content">
       <h2>Criar Lista</h2>
@@ -128,9 +146,25 @@
     </div>
   </div>
 
+  <!-- Modal Adicionar Canal -->
+  <div class="modal" id="addChannelModal">
+    <div class="modal-content">
+      <h2>Adicionar Canal</h2>
+      <input type="text" id="channelUrl" placeholder="URL do canal do YouTube (ex: @username)">
+      <button class="btn" onclick="trackChannel()">Trackear Canal</button>
+    </div>
+  </div>
+
+  <!-- Video Thumbnails Display -->
+  <div class="video-container" id="videoContainer"></div>
+
   <script>
     const modal = document.getElementById('modal');
+    const addChannelModal = document.getElementById('addChannelModal');
     const listContainer = document.getElementById('listContainer');
+    const videoContainer = document.getElementById('videoContainer');
+
+    let savedLists = [];
 
     function openModal() {
       modal.style.display = 'flex';
@@ -140,12 +174,23 @@
       modal.style.display = 'none';
     }
 
+    function openAddChannelModal(listIndex) {
+      addChannelModal.style.display = 'flex';
+      document.getElementById('channelUrl').dataset.listIndex = listIndex; // store the list index
+    }
+
+    function closeAddChannelModal() {
+      addChannelModal.style.display = 'none';
+    }
+
     function saveList() {
       const listName = document.getElementById('listName').value;
       if (listName.trim()) {
         const listItem = document.createElement('div');
         listItem.classList.add('list-item');
         listItem.innerText = listName;
+        listItem.onclick = () => openAddChannelModal(savedLists.length); // Open add channel modal
+        savedLists.push({ name: listName, channels: [] });
         listContainer.appendChild(listItem);
         closeModal();
         document.getElementById('listName').value = ''; // Clear input
@@ -153,7 +198,63 @@
     }
 
     function showSavedChannels() {
-      listContainer.style.display = 'block';
+      listContainer.innerHTML = '';
+      savedLists.forEach((list, index) => {
+        const listItem = document.createElement('div');
+        listItem.classList.add('list-item');
+        listItem.innerText = list.name;
+        listItem.onclick = () => {
+          displayVideos(list.channels); // Show videos of this list
+        };
+        listContainer.appendChild(listItem);
+      });
+    }
+
+    function trackChannel() {
+      const channelUrl = document.getElementById('channelUrl').value;
+      if (channelUrl.trim()) {
+        const listIndex = document.getElementById('channelUrl').dataset.listIndex;
+        const username = channelUrl.split('@')[1];
+
+        // Call YouTube API here to fetch videos by username
+        fetchVideos(username).then(videos => {
+          savedLists[listIndex].channels.push({ username, videos });
+          closeAddChannelModal();
+          displayVideos(savedLists[listIndex].channels); // Display videos of this list
+        });
+      }
+    }
+
+    function fetchVideos(username) {
+      // Use YouTube API to fetch videos by username
+      const apiKey = "AIzaSyD2737mJtrmC5efJz4gntSAxochOoq8LpE";
+      const channelId = `UC${username}`;
+      const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=10`;
+
+      return fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          return data.items.map(item => ({
+            title: item.snippet.title,
+            thumbnail: item.snippet.thumbnails.high.url
+          }));
+        })
+        .catch(error => {
+          console.error("Erro ao buscar vídeos:", error);
+          return [];
+        });
+    }
+
+    function displayVideos(channels) {
+      videoContainer.innerHTML = '';
+      channels.forEach(channel => {
+        channel.videos.forEach(video => {
+          const videoItem = document.createElement('div');
+          videoItem.classList.add('video-item');
+          videoItem.innerHTML = `<img src="${video.thumbnail}" alt="${video.title}"><h3>${video.title}</h3>`;
+          videoContainer.appendChild(videoItem);
+        });
+      });
     }
   </script>
 
