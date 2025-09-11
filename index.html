@@ -237,7 +237,7 @@
       return fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          console.log("API response:", data);
+          console.log("API response:", data); // Check the response structure
           if (data.items) {
             return data.items.map(item => ({
               title: item.snippet.title,
