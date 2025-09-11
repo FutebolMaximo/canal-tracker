@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -216,23 +215,44 @@
         const listIndex = document.getElementById('channelUrl').dataset.listIndex;
         const username = channelUrl.split('@')[1];
 
-        // Garantir que estamos passando o channelId correto
-        const channelId = `UC${username}`;
+        // Chamar a API para obter o channelId usando o @username
+        getChannelId(username).then(channelId => {
+          console.log("Tracking Channel:", channelId);
 
-        console.log("Tracking Channel:", channelId);
-
-        fetchVideos(channelId).then(videos => {
-          savedLists[listIndex].channels.push({ username, videos });
-          closeAddChannelModal();
-          displayVideos(savedLists[listIndex].channels);
+          fetchVideos(channelId).then(videos => {
+            savedLists[listIndex].channels.push({ username, videos });
+            closeAddChannelModal();
+            displayVideos(savedLists[listIndex].channels);
+          }).catch(error => {
+            console.error("Erro ao buscar vídeos:", error);
+          });
         }).catch(error => {
-          console.error("Erro ao buscar vídeos:", error);
+          console.error("Erro ao buscar o channelId:", error);
         });
       }
     }
 
+    function getChannelId(username) {
+      const apiKey = "YOUR_API_KEY"; // Substitua com sua chave da API
+      const apiUrl = `https://www.googleapis.com/youtube/v3/channels?key=${apiKey}&forUsername=${username}&part=id`;
+
+      return fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.items && data.items[0]) {
+            return data.items[0].id; // Retorna o channelId
+          } else {
+            throw new Error("Channel not found");
+          }
+        })
+        .catch(error => {
+          console.error("Erro ao obter o channelId:", error);
+          throw error;
+        });
+    }
+
     function fetchVideos(channelId) {
-      const apiKey = "AIzaSyD2737mJtrmC5efJz4gntSAxochOoq8LpE";
+      const apiKey = "YOUR_API_KEY";
       const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=10`;
 
       console.log("Fetching data from:", apiUrl);
@@ -242,7 +262,6 @@
         .then(data => {
           console.log("API response:", data);
 
-          // Verificar se os dados têm a propriedade 'items' e manipular corretamente
           if (data.items && Array.isArray(data.items)) {
             return data.items.map(item => ({
               title: item.snippet.title,
