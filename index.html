@@ -237,7 +237,10 @@
       return fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          console.log("API response:", data); // Check the full response for debugging
+          // Display the complete response of the API in the console
+          console.log("API response:", data); // See how the response is structured
+          
+          // Check if the response has 'items' and return the video data
           if (data.items && Array.isArray(data.items)) {
             return data.items.map(item => ({
               title: item.snippet.title,
