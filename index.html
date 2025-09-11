@@ -237,17 +237,19 @@
       return fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          // Display the complete response of the API in the console
-          console.log("API response:", data); // See how the response is structured
-          
-          // Check if the response has 'items' and return the video data
+          // Exibir a resposta completa da API no console para diagnóstico
+          console.log("API response:", data); // Aqui verificamos a estrutura completa da resposta
+
+          // Verificar se os dados têm a propriedade 'items' e manipular corretamente
           if (data.items && Array.isArray(data.items)) {
+            // Mapeia os itens para obter o título e a miniatura
             return data.items.map(item => ({
               title: item.snippet.title,
               thumbnail: item.snippet.thumbnails.high.url
             }));
           } else {
-            console.error("No items found in the response", data);
+            // Caso a resposta não tenha 'items', exibe o erro
+            console.error("Nenhum item encontrado na resposta", data);
             return [];
           }
         })
