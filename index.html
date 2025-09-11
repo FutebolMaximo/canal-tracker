@@ -238,7 +238,7 @@
         .then(response => response.json())
         .then(data => {
           console.log("API response:", data); // Check the full response for debugging
-          if (data.items) {
+          if (data.items && Array.isArray(data.items)) {
             return data.items.map(item => ({
               title: item.snippet.title,
               thumbnail: item.snippet.thumbnails.high.url
