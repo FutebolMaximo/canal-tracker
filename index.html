@@ -242,7 +242,6 @@
 
           // Verificar se os dados têm a propriedade 'items' e manipular corretamente
           if (data.items && Array.isArray(data.items)) {
-            // Mapeia os itens para obter o título e a miniatura
             return data.items.map(item => ({
               title: item.snippet.title,
               thumbnail: item.snippet.thumbnails.high.url
