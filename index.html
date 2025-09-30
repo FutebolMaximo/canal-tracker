@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Futebol Máximo - Tracker Vídeos Tab</title>
+<title>Futebol Máximo - Tracker Vídeos Tab Only</title>
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; }
 .sidebar { width:250px; background:#000; padding:20px; display:flex; flex-direction:column; align-items:flex-start; }
@@ -63,7 +63,7 @@ body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; disp
 <div id="modalChannel" class="modal">
   <div class="dialog">
     <h3>Adicionar Canal</h3>
-    <input id="inputChannelUrl" class="input" placeholder="https://www.youtube.com/@username">
+    <input id="inputChannelUrl" class="input" placeholder="https://www.youtube.com/@username/videos">
     <div style="margin-top:10px;text-align:right">
       <button class="btn" onclick="closeModal('addChannel')">Cancelar</button>
       <button class="btn" onclick="addChannel()">Trackear</button>
@@ -124,20 +124,20 @@ async function addChannel() {
   await fetchVideosFromVideosTab(url);
 }
 
-async function fetchVideosFromVideosTab(channelUrl) {
+async function fetchVideosFromVideosTab(channelVideosUrl) {
   try {
-    // Obter o HTML da aba /videos
-    const resp = await fetch(channelUrl+"/videos");
+    const resp = await fetch(channelVideosUrl);
     const text = await resp.text();
-    const jsonStrMatch = text.match(/var ytInitialData = (.*?);<\/script>/s);
-    if(!jsonStrMatch) { alert("Não foi possível ler os vídeos"); return; }
-    const jsonData = JSON.parse(jsonStrMatch[1]);
-    // Extrair vídeos da aba videos
+    const jsonMatch = text.match(/var ytInitialData = (.*?);<\/script>/s);
+    if(!jsonMatch) { alert("Não foi possível ler os vídeos"); return; }
+    const data = JSON.parse(jsonMatch[1]);
     const videoItems = [];
-    const contents = jsonData.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents;
-    contents.forEach(section => {
+    const tabs = data.contents.twoColumnBrowseResultsRenderer.tabs;
+    const videosTab = tabs.find(t=>t.tabRenderer?.title==="Videos");
+    const gridItems = videosTab.tabRenderer.content.sectionListRenderer.contents;
+    gridItems.forEach(section=>{
       const items = section.itemSectionRenderer?.contents || [];
-      items.forEach(item => {
+      items.forEach(item=>{
         const video = item.gridVideoRenderer;
         if(video) {
           videoItems.push({
@@ -151,8 +151,8 @@ async function fetchVideosFromVideosTab(channelUrl) {
         }
       });
     });
-    // Salvar e renderizar
     const list = state.lists.find(l=>l.id===currentListId);
+    videoItems.sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
     list.videos = videoItems;
     renderVideos(videoItems);
     saveState();
