@@ -6,293 +6,165 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Futebol Máximo - Saved Channels</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #111;
-      color: #fff;
-      display: flex;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 250px;
-      background-color: #000;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .logo {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 30px;
-      color: #4CAF50;
-    }
-    .menu-item {
-      margin: 10px 0;
-      cursor: pointer;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    .menu-item:hover {
-      background-color: #222;
-    }
-
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      padding: 20px;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .btn {
-      background-color: #4CAF50;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      color: #fff;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    .btn:hover {
-      background-color: #45a049;
-    }
-
-    /* Lista de canais */
-    .list-container {
-      margin-top: 20px;
-    }
-    .list-item {
-      background-color: #222;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      cursor: pointer;
-    }
-
-    /* Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background: #333;
-      padding: 20px;
-      border-radius: 8px;
-      width: 300px;
-      text-align: center;
-    }
-    .modal-content input {
-      width: 90%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: none;
-    }
-
-    /* Thumbnail and video display */
-    .video-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .video-item {
-      background-color: #222;
-      width: 200px;
-      padding: 10px;
-      border-radius: 8px;
-      text-align: center;
-    }
-    .video-item img {
-      width: 100%;
-      border-radius: 8px;
-    }
+    body { margin:0; font-family:Arial,sans-serif; background-color:#111; color:#fff; display:flex; }
+    .sidebar { width:250px; background-color:#000; padding:20px; display:flex; flex-direction:column; align-items:flex-start; }
+    .logo { font-size:20px; font-weight:bold; margin-bottom:30px; color:#4CAF50; }
+    .menu-item { margin:10px 0; cursor:pointer; padding:10px; border-radius:5px; }
+    .menu-item:hover { background-color:#222; }
+    .main-content { flex:1; padding:20px; overflow-y:auto; }
+    .header { display:flex; justify-content:space-between; align-items:center; }
+    .btn { background-color:#4CAF50; border:none; padding:10px 20px; border-radius:5px; color:#fff; cursor:pointer; font-size:16px; }
+    .btn:hover { background-color:#45a049; }
+    .list-container { margin-top:20px; display:grid; grid-template-columns:1fr; gap:10px; }
+    .list-item { background-color:#222; padding:15px; border-radius:8px; cursor:pointer; }
+    .video-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-top:12px; }
+    .video-card { background:#181818; border-radius:8px; overflow:hidden; }
+    .video-card img { width:100%; display:block; }
+    .video-title { padding:8px; font-size:14px; }
+    .modal { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); }
+    .modal.show { display:grid; }
+    .dialog { background:#222; padding:20px; border-radius:10px; width:100%; max-width:400px; }
+    .input { width:100%; padding:10px; border-radius:6px; border:none; margin-top:10px; }
   </style>
 </head>
 <body>
-
-  <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo">⚽ Futebol Máximo</div>
     <div class="menu-item" onclick="showSavedChannels()">📺 Saved Channels</div>
   </div>
-
-  <!-- Main Content -->
   <div class="main-content">
     <div class="header">
-      <h1>Saved Channels</h1>
-      <button class="btn" onclick="openModal()">+ Criar Lista</button>
+      <h1 id="pageTitle">Saved Channels</h1>
+      <button class="btn" onclick="openModal('createList')">+ Criar Lista</button>
     </div>
-    <div class="list-container" id="listContainer"></div>
-  </div>
-
-  <!-- Modal Criar Lista -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <h2>Criar Lista</h2>
-      <input type="text" id="listName" placeholder="Nome da lista">
-      <button class="btn" onclick="saveList()">Salvar</button>
+    <div id="listsGrid" class="list-container"></div>
+    <div id="listView" style="display:none">
+      <button class="btn" onclick="backToLists()">← Voltar</button>
+      <h2 id="listName"></h2>
+      <button class="btn" onclick="openModal('addChannel')">+ Adicionar Canal</button>
+      <div id="videosGrid" class="video-grid"></div>
     </div>
   </div>
 
-  <!-- Modal Adicionar Canal -->
-  <div class="modal" id="addChannelModal">
-    <div class="modal-content">
-      <h2>Adicionar Canal</h2>
-      <input type="text" id="channelUrl" placeholder="URL do canal do YouTube (ex: https://www.youtube.com/@username)">
-      <button class="btn" onclick="trackChannel()">Trackear Canal</button>
+  <div id="modalCreate" class="modal">
+    <div class="dialog">
+      <h3>Criar Lista</h3>
+      <input id="inputListName" class="input" placeholder="Nome da lista">
+      <div style="margin-top:10px;text-align:right">
+        <button class="btn" onclick="closeModal('createList')">Cancelar</button>
+        <button class="btn" onclick="saveList()">Salvar</button>
+      </div>
     </div>
   </div>
 
-  <!-- Video Thumbnails Display -->
-  <div class="video-container" id="videoContainer"></div>
+  <div id="modalChannel" class="modal">
+    <div class="dialog">
+      <h3>Adicionar Canal</h3>
+      <input id="inputChannelUrl" class="input" placeholder="https://www.youtube.com/@username">
+      <div style="margin-top:10px;text-align:right">
+        <button class="btn" onclick="closeModal('addChannel')">Cancelar</button>
+        <button class="btn" onclick="addChannel()">Trackear</button>
+      </div>
+    </div>
+  </div>
 
-  <script>
-    const modal = document.getElementById('modal');
-    const addChannelModal = document.getElementById('addChannelModal');
-    const listContainer = document.getElementById('listContainer');
-    const videoContainer = document.getElementById('videoContainer');
+<script>
+const API_KEY = "AIzaSyD2737mJtrmC5efJz4gntSAxochOoq8LpE";
+let state = JSON.parse(localStorage.getItem("tracker_state") || '{"lists":[]}');
+let currentListId = null;
 
-    let savedLists = [];
+function saveState() { localStorage.setItem("tracker_state", JSON.stringify(state)); }
 
-    function openModal() {
-      modal.style.display = 'flex';
-    }
+function renderLists() {
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("listsGrid").innerHTML = "";
+  state.lists.forEach(list => {
+    const el = document.createElement("div");
+    el.className = "list-item";
+    el.textContent = list.name;
+    el.onclick = () => openList(list.id);
+    document.getElementById("listsGrid").appendChild(el);
+  });
+}
 
-    function closeModal() {
-      modal.style.display = 'none';
-    }
+function openList(id) {
+  currentListId = id;
+  const list = state.lists.find(l => l.id === id);
+  document.getElementById("pageTitle").textContent = list.name;
+  document.getElementById("listName").textContent = list.name;
+  document.getElementById("listsGrid").style.display = "none";
+  document.getElementById("listView").style.display = "block";
+  document.getElementById("videosGrid").innerHTML = "";
+}
 
-    function openAddChannelModal(listIndex) {
-      addChannelModal.style.display = 'flex';
-      document.getElementById('channelUrl').dataset.listIndex = listIndex; // store the list index
-    }
+function openModal(type) {
+  if(type==='createList') document.getElementById("modalCreate").classList.add("show");
+  if(type==='addChannel') document.getElementById("modalChannel").classList.add("show");
+}
 
-    function closeAddChannelModal() {
-      addChannelModal.style.display = 'none';
-    }
+function closeModal(type) {
+  if(type==='createList') document.getElementById("modalCreate").classList.remove("show");
+  if(type==='addChannel') document.getElementById("modalChannel").classList.remove("show");
+}
 
-    function saveList() {
-      const listName = document.getElementById('listName').value;
-      if (listName.trim()) {
-        const listItem = document.createElement('div');
-        listItem.classList.add('list-item');
-        listItem.innerText = listName;
-        listItem.onclick = () => openAddChannelModal(savedLists.length); // Open add channel modal
-        savedLists.push({ name: listName, channels: [] });
-        listContainer.appendChild(listItem);
-        closeModal();
-        document.getElementById('listName').value = ''; // Clear input
-      }
-    }
+function saveList() {
+  const name = document.getElementById("inputListName").value.trim();
+  if(!name) return;
+  state.lists.push({ id: Date.now(), name, channels: [] });
+  saveState();
+  renderLists();
+  closeModal('createList');
+  document.getElementById("inputListName").value = "";
+}
 
-    function showSavedChannels() {
-      listContainer.innerHTML = '';
-      savedLists.forEach((list, index) => {
-        const listItem = document.createElement('div');
-        listItem.classList.add('list-item');
-        listItem.innerText = list.name;
-        listItem.onclick = () => {
-          displayVideos(list.channels); // Show videos of this list
-        };
-        listContainer.appendChild(listItem);
-      });
-    }
+function backToLists() {
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("listsGrid").style.display = "grid";
+  document.getElementById("pageTitle").textContent = "Saved Channels";
+}
 
-    function trackChannel() {
-      const channelUrl = document.getElementById('channelUrl').value;
-      if (channelUrl.trim()) {
-        const listIndex = document.getElementById('channelUrl').dataset.listIndex;
+async function addChannel() {
+  const url = document.getElementById("inputChannelUrl").value.trim();
+  if(!url) return;
+  closeModal('addChannel');
+  const channelId = await resolveChannelId(url);
+  if(!channelId) { alert("Não foi possível resolver o canal."); return; }
+  const list = state.lists.find(l=>l.id===currentListId);
+  list.channelId = channelId;
+  saveState();
+  fetchVideos(channelId);
+}
 
-        // Extrair o @username da URL completa
-        const username = channelUrl.split('@')[1];
+async function resolveChannelId(url) {
+  if(url.includes("/channel/")) return url.split("/channel/")[1];
+  if(url.includes("@")) {
+    const handle = url.split("@")[1];
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=@${handle}&key=${API_KEY}`);
+    const data = await res.json();
+    return data.items && data.items.length ? data.items[0].id : null;
+  }
+  return null;
+}
 
-        // Chamar a API para obter o channelId usando o @username
-        getChannelId(username).then(channelId => {
-          console.log("Tracking Channel:", channelId);
+async function fetchVideos(channelId) {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=20&type=video`);
+  const data = await res.json();
+  const videos = data.items || [];
+  renderVideos(videos.map(v=>({ title:v.snippet.title, thumb:v.snippet.thumbnails.medium.url, id:v.id.videoId })));
+}
 
-          fetchVideos(channelId).then(videos => {
-            savedLists[listIndex].channels.push({ username, videos });
-            closeAddChannelModal();
-            displayVideos(savedLists[listIndex].channels);
-          }).catch(error => {
-            console.error("Erro ao buscar vídeos:", error);
-          });
-        }).catch(error => {
-          console.error("Erro ao buscar o channelId:", error);
-        });
-      }
-    }
+function renderVideos(videos) {
+  const grid = document.getElementById("videosGrid");
+  grid.innerHTML = "";
+  videos.forEach(v=>{
+    const el = document.createElement("div");
+    el.className = "video-card";
+    el.innerHTML = `<img src="${v.thumb}"><div class="video-title">${v.title}</div>`;
+    grid.appendChild(el);
+  });
+}
 
-    function getChannelId(username) {
-      const apiKey = "YOUR_API_KEY"; // Substitua com sua chave da API
-      const apiUrl = `https://www.googleapis.com/youtube/v3/channels?key=${apiKey}&forUsername=${username}&part=id`;
-
-      return fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.items && data.items[0]) {
-            return data.items[0].id; // Retorna o channelId
-          } else {
-            throw new Error("Channel not found");
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao obter o channelId:", error);
-          throw error;
-        });
-    }
-
-    function fetchVideos(channelId) {
-      const apiKey = "YOUR_API_KEY";
-      const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=10`;
-
-      console.log("Fetching data from:", apiUrl);
-
-      return fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          console.log("API response:", data);
-
-          if (data.items && Array.isArray(data.items)) {
-            return data.items.map(item => ({
-              title: item.snippet.title,
-              thumbnail: item.snippet.thumbnails.high.url
-            }));
-          } else {
-            console.error("Nenhum item encontrado na resposta", data);
-            return [];
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao buscar vídeos:", error);
-          return [];
-        });
-    }
-
-    function displayVideos(channels) {
-      videoContainer.innerHTML = '';
-      channels.forEach(channel => {
-        channel.videos.forEach(video => {
-          const videoItem = document.createElement('div');
-          videoItem.classList.add('video-item');
-          videoItem.innerHTML = `<img src="${video.thumbnail}" alt="${video.title}"><h3>${video.title}</h3>`;
-          videoContainer.appendChild(videoItem);
-        });
-      });
-    }
-  </script>
-
+renderLists();
+</script>
 </body>
 </html>
