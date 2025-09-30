@@ -21,6 +21,7 @@
     .video-card { background:#181818; border-radius:8px; overflow:hidden; }
     .video-card img { width:100%; display:block; }
     .video-title { padding:8px; font-size:14px; }
+    .video-info { padding: 0 8px 8px 8px; font-size:12px; color:#aaa; }
     .modal { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); }
     .modal.show { display:grid; }
     .dialog { background:#222; padding:20px; border-radius:10px; width:100%; max-width:400px; }
@@ -46,6 +47,7 @@
     </div>
   </div>
 
+  <!-- Modal Criar Lista -->
   <div id="modalCreate" class="modal">
     <div class="dialog">
       <h3>Criar Lista</h3>
@@ -57,6 +59,7 @@
     </div>
   </div>
 
+  <!-- Modal Adicionar Canal -->
   <div id="modalChannel" class="modal">
     <div class="dialog">
       <h3>Adicionar Canal</h3>
@@ -94,7 +97,7 @@ function openList(id) {
   document.getElementById("listName").textContent = list.name;
   document.getElementById("listsGrid").style.display = "none";
   document.getElementById("listView").style.display = "block";
-  document.getElementById("videosGrid").innerHTML = "";
+  renderVideos(list.videos || []);
 }
 
 function openModal(type) {
@@ -110,7 +113,7 @@ function closeModal(type) {
 function saveList() {
   const name = document.getElementById("inputListName").value.trim();
   if(!name) return;
-  state.lists.push({ id: Date.now(), name, channels: [] });
+  state.lists.push({ id: Date.now(), name, channels: [], videos: [] });
   saveState();
   renderLists();
   closeModal('createList');
@@ -131,8 +134,8 @@ async function addChannel() {
   if(!channelId) { alert("Não foi possível resolver o canal."); return; }
   const list = state.lists.find(l=>l.id===currentListId);
   list.channelId = channelId;
+  await fetchVideos(channelId, list);
   saveState();
-  fetchVideos(channelId);
 }
 
 async function resolveChannelId(url) {
@@ -146,11 +149,29 @@ async function resolveChannelId(url) {
   return null;
 }
 
-async function fetchVideos(channelId) {
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=20&type=video`);
+async function fetchVideos(channelId, list) {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=50&type=video`);
   const data = await res.json();
-  const videos = data.items || [];
-  renderVideos(videos.map(v=>({ title:v.snippet.title, thumb:v.snippet.thumbnails.medium.url, id:v.id.videoId })));
+  let videos = data.items.filter(v => v.snippet.liveBroadcastContent==='none');
+  const videoIds = videos.map(v=>v.id.videoId).join(',');
+  const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${videoIds}&part=snippet,contentDetails,statistics`);
+  const detailData = await detailRes.json();
+  videos = detailData.items.map(v=>({
+    id: v.id,
+    title: v.snippet.title,
+    thumb: v.snippet.thumbnails.medium.url,
+    duration: v.contentDetails.duration,
+    views: v.statistics.viewCount,
+    publishedAt: v.snippet.publishedAt
+  }));
+  list.videos = videos;
+  renderVideos(videos);
+}
+
+function formatDuration(iso) {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  const hours = parseInt(match[1]||0), minutes=parseInt(match[2]||0), seconds=parseInt(match[3]||0);
+  return hours>0 ? `${hours}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}` : `${minutes}:${seconds.toString().padStart(2,'0')}`;
 }
 
 function renderVideos(videos) {
@@ -159,7 +180,13 @@ function renderVideos(videos) {
   videos.forEach(v=>{
     const el = document.createElement("div");
     el.className = "video-card";
-    el.innerHTML = `<img src="${v.thumb}"><div class="video-title">${v.title}</div>`;
+    el.innerHTML = `
+      <img src="${v.thumb}">
+      <div class="video-title">${v.title}</div>
+      <div class="video-info">
+        Duração: ${formatDuration(v.duration)} | Views: ${v.views} | Publicado: ${new Date(v.publishedAt).toLocaleDateString()}
+      </div>
+    `;
     grid.appendChild(el);
   });
 }
