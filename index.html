@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Futebol Máximo - Tracker Final com Filtro Correto</title>
+<title>Futebol Máximo - Tracker Playlist</title>
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; }
 .sidebar { width:250px; background:#000; padding:20px; display:flex; flex-direction:column; align-items:flex-start; }
@@ -126,7 +126,7 @@ async function addChannel() {
   if(!channelId) { alert("Não foi possível resolver o canal."); return; }
   const list = state.lists.find(l=>l.id===currentListId);
   if(!list.channels.includes(channelId)) list.channels.push(channelId);
-  await fetchAndSaveVideos(list, channelId);
+  await fetchAndSaveVideosFromUploads(list, channelId);
   saveState();
 }
 
@@ -134,42 +134,38 @@ async function resolveChannelId(url) {
   if(url.includes("/channel/")) return url.split("/channel/")[1];
   if(url.includes("@")) {
     const handle = url.split("@")[1];
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=@${handle}&key=${API_KEY}`);
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id&forHandle=@${handle}&key=${API_KEY}`);
     const data = await res.json();
     return data.items && data.items.length ? data.items[0].id : null;
   }
   return null;
 }
 
-// Converter ISO8601 duration para segundos
-function isoToSeconds(iso) {
-  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
-  const match = iso.match(regex);
-  if(!match) return 0;
-  const h = parseInt(match[1]||0), m = parseInt(match[2]||0), s = parseInt(match[3]||0);
-  return h*3600 + m*60 + s;
-}
+async function fetchAndSaveVideosFromUploads(list, channelId) {
+  // Obter uploads playlist do canal
+  const channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`);
+  const channelData = await channelRes.json();
+  const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
 
-async function fetchAndSaveVideos(list, channelId) {
-  const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=50&type=video`);
-  const searchData = await searchRes.json();
-  let videoIds = searchData.items.map(v=>v.id.videoId);
-  if(videoIds.length===0) return;
-  const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${videoIds.join(',')}&part=snippet,contentDetails,statistics`);
+  // Buscar vídeos da playlist
+  const playlistRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${uploadsPlaylistId}&key=${API_KEY}`);
+  const playlistData = await playlistRes.json();
+  const videoIds = playlistData.items.map(v => v.contentDetails.videoId);
+
+  // Obter detalhes completos
+  const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds.join(',')}&key=${API_KEY}`);
   const detailData = await detailRes.json();
-  let videos = detailData.items.map(v=>({
-    id:v.id,
-    title:v.snippet.title,
-    thumb:v.snippet.thumbnails.medium.url,
-    duration:v.contentDetails.duration,
-    views:v.statistics.viewCount,
-    publishedAt:v.snippet.publishedAt
+
+  let videos = detailData.items.map(v => ({
+    id: v.id,
+    title: v.snippet.title,
+    thumb: v.snippet.thumbnails.medium.url,
+    duration: v.contentDetails.duration,
+    views: v.statistics.viewCount,
+    publishedAt: v.snippet.publishedAt
   }));
-  // Aplicar filtro correto: 1min <= duração <= 50min
-  videos = videos.filter(v => {
-    const secs = isoToSeconds(v.duration);
-    return secs >= 60 && secs <= 3000;
-  });
+
+  // Ordenar do mais recente para o mais antigo
   videos.sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
   list.videos = videos;
   renderVideos(videos);
