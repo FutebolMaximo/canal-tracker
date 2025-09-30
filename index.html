@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Futebol Máximo - Tracker Final</title>
+<title>Futebol Máximo - Tracker Final com Filtro</title>
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; }
 .sidebar { width:250px; background:#000; padding:20px; display:flex; flex-direction:column; align-items:flex-start; }
@@ -142,23 +142,34 @@ async function resolveChannelId(url) {
   return null;
 }
 
+function isoToSeconds(iso) {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  const h = parseInt(match[1]||0), m = parseInt(match[2]||0), s = parseInt(match[3]||0);
+  return h*3600 + m*60 + s;
+}
+
 async function fetchAndSaveVideos(list, channelId) {
-  // Search videos
   const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=50&type=video`);
   const searchData = await searchRes.json();
-  let videoIds = searchData.items.filter(v=>v.snippet.liveBroadcastContent==='none' && !v.id.videoId.includes("shorts")).map(v=>v.id.videoId);
+  let videoIds = searchData.items.map(v=>v.id.videoId);
   if(videoIds.length===0) return;
-  // Get detailed info
   const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${videoIds.join(',')}&part=snippet,contentDetails,statistics`);
   const detailData = await detailRes.json();
-  const videos = detailData.items.map(v=>({
+  let videos = detailData.items.map(v=>({
     id:v.id,
     title:v.snippet.title,
     thumb:v.snippet.thumbnails.medium.url,
     duration:v.contentDetails.duration,
     views:v.statistics.viewCount,
     publishedAt:v.snippet.publishedAt
-  })).sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
+  }));
+  // Filtrar shorts <1min e lives >50min
+  videos = videos.filter(v => {
+    const secs = isoToSeconds(v.duration);
+    return secs >= 60 && secs <= 3000; // 1min a 50min
+  });
+  // Ordenar por mais recente
+  videos.sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
   list.videos = videos;
   renderVideos(videos);
 }
