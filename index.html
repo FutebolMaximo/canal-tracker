@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Futebol Máximo - Tracker Playlist</title>
+<title>Futebol Máximo - Tracker Vídeos Tab</title>
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; }
 .sidebar { width:250px; background:#000; padding:20px; display:flex; flex-direction:column; align-items:flex-start; }
@@ -72,7 +72,6 @@ body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; disp
 </div>
 
 <script>
-const API_KEY = "AIzaSyD2737mJtrmC5efJz4gntSAxochOoq8LpE";
 let state = JSON.parse(localStorage.getItem("tracker_state") || '{"lists":[]}');
 let currentListId = null;
 
@@ -122,59 +121,45 @@ async function addChannel() {
   const url = document.getElementById("inputChannelUrl").value.trim();
   if(!url) return;
   closeModal('addChannel');
-  const channelId = await resolveChannelId(url);
-  if(!channelId) { alert("Não foi possível resolver o canal."); return; }
-  const list = state.lists.find(l=>l.id===currentListId);
-  if(!list.channels.includes(channelId)) list.channels.push(channelId);
-  await fetchAndSaveVideosFromUploads(list, channelId);
-  saveState();
+  await fetchVideosFromVideosTab(url);
 }
 
-async function resolveChannelId(url) {
-  if(url.includes("/channel/")) return url.split("/channel/")[1];
-  if(url.includes("@")) {
-    const handle = url.split("@")[1];
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id&forHandle=@${handle}&key=${API_KEY}`);
-    const data = await res.json();
-    return data.items && data.items.length ? data.items[0].id : null;
+async function fetchVideosFromVideosTab(channelUrl) {
+  try {
+    // Obter o HTML da aba /videos
+    const resp = await fetch(channelUrl+"/videos");
+    const text = await resp.text();
+    const jsonStrMatch = text.match(/var ytInitialData = (.*?);<\/script>/s);
+    if(!jsonStrMatch) { alert("Não foi possível ler os vídeos"); return; }
+    const jsonData = JSON.parse(jsonStrMatch[1]);
+    // Extrair vídeos da aba videos
+    const videoItems = [];
+    const contents = jsonData.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents;
+    contents.forEach(section => {
+      const items = section.itemSectionRenderer?.contents || [];
+      items.forEach(item => {
+        const video = item.gridVideoRenderer;
+        if(video) {
+          videoItems.push({
+            id: video.videoId,
+            title: video.title.runs[0].text,
+            thumb: video.thumbnail.thumbnails.pop().url,
+            publishedAt: video.publishedTimeText?.simpleText || "",
+            views: video.viewCountText?.simpleText || "",
+            duration: video.lengthText?.simpleText || ""
+          });
+        }
+      });
+    });
+    // Salvar e renderizar
+    const list = state.lists.find(l=>l.id===currentListId);
+    list.videos = videoItems;
+    renderVideos(videoItems);
+    saveState();
+  } catch(e) {
+    console.error("Erro ao obter vídeos da aba videos:", e);
+    alert("Erro ao obter vídeos da aba videos.");
   }
-  return null;
-}
-
-async function fetchAndSaveVideosFromUploads(list, channelId) {
-  // Obter uploads playlist do canal
-  const channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`);
-  const channelData = await channelRes.json();
-  const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
-
-  // Buscar vídeos da playlist
-  const playlistRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${uploadsPlaylistId}&key=${API_KEY}`);
-  const playlistData = await playlistRes.json();
-  const videoIds = playlistData.items.map(v => v.contentDetails.videoId);
-
-  // Obter detalhes completos
-  const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds.join(',')}&key=${API_KEY}`);
-  const detailData = await detailRes.json();
-
-  let videos = detailData.items.map(v => ({
-    id: v.id,
-    title: v.snippet.title,
-    thumb: v.snippet.thumbnails.medium.url,
-    duration: v.contentDetails.duration,
-    views: v.statistics.viewCount,
-    publishedAt: v.snippet.publishedAt
-  }));
-
-  // Ordenar do mais recente para o mais antigo
-  videos.sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
-  list.videos = videos;
-  renderVideos(videos);
-}
-
-function formatDuration(iso) {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  const h = parseInt(match[1]||0), m = parseInt(match[2]||0), s = parseInt(match[3]||0);
-  return h>0?`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`:`${m}:${s.toString().padStart(2,'0')}`;
 }
 
 function renderVideos(videos) {
@@ -187,7 +172,7 @@ function renderVideos(videos) {
       <img src="${v.thumb}">
       <div class="video-title">${v.title}</div>
       <div class="video-info">
-        Duração: ${formatDuration(v.duration)} | Views: ${v.views} | Publicado: ${new Date(v.publishedAt).toLocaleDateString()}
+        Duração: ${v.duration} | Views: ${v.views} | Publicado: ${v.publishedAt}
       </div>
     `;
     grid.appendChild(el);
